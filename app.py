@@ -26,34 +26,43 @@ def obtener_cotizaciones():
 
 oficial, mep, brecha_actual = obtener_cotizaciones()
 
-# --- MOTOR DE DATOS: BCRA / MACRO ---
+# --- MOTOR DE DATOS: BCRA / MACRO (SISTEMA EN CASCADA) ---
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning) # Oculta alertas de seguridad del BCRA
+
 @st.cache_data(ttl=3600)
 def obtener_datos_macro():
+    # PLAN A: API Oficial del BCRA
     try:
-        # Intentamos obtener la tasa de Plazo Fijo / Política monetaria desde la API pública
-        respuesta_tasas = requests.get("https://api.argentinadatos.com/v1/finanzas/tasas/plazoFijo")
-        respuesta_inflacion = requests.get("https://api.argentinadatos.com/v1/finanzas/indices/inflacion")
-        
-        # Si la API responde bien, buscamos el último dato de la lista (el más reciente)
-        if respuesta_tasas.status_code == 200 and respuesta_inflacion.status_code == 200:
-            datos_tasas = respuesta_tasas.json()
-            datos_inflacion = respuesta_inflacion.json()
-            
-            # Tomamos la última tasa nominal anual (TNA) registrada multiplicada por 100 para porcentaje
-            tna_real = datos_tasas[-1]['valor'] * 100 
-            
-            # Tomamos el último dato de inflación mensual y lo anualizamos (Aproximación REM)
-            inflacion_mensual = datos_inflacion[-1]['valor']
-            rem_estimado = ((1 + inflacion_mensual)**12 - 1) * 100
-            
-            return tna_real, rem_estimado
+        # Se desactiva verify=False porque los certificados del BCRA suelen fallar
+        res_bcra = requests.get("https://api.bcra.gob.ar/estadisticas/v1/principalesvariables", verify=False, timeout=5)
+        if res_bcra.status_code == 200:
+            datos = res_bcra.json()['results']
+            # ID 6: Tasa Política Monetaria | ID 27: Inflación Mensual INDEC
+            tna_bcra = next(item['valor'] for item in datos if item['idVariable'] == 6)
+            inf_mensual = next(item['valor'] for item in datos if item['idVariable'] == 27)
+            # Anualizamos la inflación mensual para proyectar el REM
+            rem_bcra = ((1 + (inf_mensual / 100))**12 - 1) * 100
+            return tna_bcra, rem_bcra
+    except:
+        pass # Si falla el Plan A, sigue de largo sin romper la app
+
+    # PLAN B: API ArgentinaDatos (Espejo Comunitario)
+    try:
+        res_tasas = requests.get("https://api.argentinadatos.com/v1/finanzas/tasas/plazoFijo", timeout=5)
+        res_inf = requests.get("https://api.argentinadatos.com/v1/finanzas/indices/inflacion", timeout=5)
+        if res_tasas.status_code == 200 and res_inf.status_code == 200:
+            tna_ad = res_tasas.json()[-1]['valor'] * 100
+            inf_ad = res_inf.json()[-1]['valor']
+            rem_ad = ((1 + inf_ad)**12 - 1) * 100
+            return tna_ad, rem_ad
     except:
         pass
-    
-    # Si la API del BCRA se cae (suele pasar en Argentina), usamos estos valores de resguardo
-    return 40.0, 35.0 
 
-# Extraemos los datos reales de internet
+    # PLAN C: Resguardo de Emergencia (Últimos datos oficiales conocidos)
+    return 40.0, 35.0
+
+# Extraemos los datos reales de internet usando la cascada
 tna_mercado, rem_mercado = obtener_datos_macro()
 
 # --- BARRA LATERAL HÍBRIDA ---
