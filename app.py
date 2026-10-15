@@ -26,13 +26,34 @@ def obtener_cotizaciones():
 
 oficial, mep, brecha_actual = obtener_cotizaciones()
 
-# --- BARRA LATERAL ---
+# --- BARRA LATERAL HÍBRIDA ---
 st.sidebar.header("⚙️ Parámetros Macro")
-st.sidebar.caption("La Brecha Cambiaria ahora se actualiza automáticamente desde el mercado.")
-tna_actual = st.sidebar.slider("Tasa Política Monetaria (TNA %)", 20.0, 60.0, 40.0)
-rem_actual = st.sidebar.slider("Inflación REM Anualizada (%)", 20.0, 80.0, 35.0)
-reservas_ok = st.sidebar.checkbox("Reservas BCRA (Acumulación Positiva)", value=True)
 
+# El interruptor que cambia entre Realidad y Simulación
+modo_simulacion = st.sidebar.toggle("🧪 Activar Modo Simulación", value=False)
+
+if not modo_simulacion:
+    # 1. MODO AUTOMÁTICO (Datos Reales)
+    st.sidebar.success("✅ Datos Oficiales Activos")
+    st.sidebar.caption("Leyendo última información del BCRA...")
+    
+    # Aquí en el futuro conectaremos la API del BCRA. 
+    # Por ahora, fijamos los valores reales de hoy:
+    tna_actual = 40.0
+    rem_actual = 35.0
+    reservas_ok = True
+    
+    st.sidebar.info(f"🏦 TNA Actual: {tna_actual}%\n📊 REM Actual: {rem_actual}%")
+
+else:
+    # 2. MODO SIMULACIÓN (Sliders Manuales)
+    st.sidebar.warning("⚠️ Parámetros Simulados")
+    tna_actual = st.sidebar.slider("Simular TNA (%)", 20.0, 80.0, 40.0)
+    rem_actual = st.sidebar.slider("Simular REM (%)", 20.0, 80.0, 35.0)
+    reservas_ok = st.sidebar.checkbox("Simular Reservas Positivas", value=True)
+    
+    # Esta alerta gigante aparecerá en el medio de la pantalla principal
+    st.warning("🧪 ESTÁS EN MODO SIMULACIÓN: Los semáforos macroeconómicos responden a tus parámetros manuales, no al mercado real.")
 # --- MÓDULO 1: FLASH DIARIO ---
 st.header("1. Flash Diario de Mercado")
 if oficial > 0:
