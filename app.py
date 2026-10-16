@@ -123,22 +123,16 @@ with col3:
 
 st.markdown("---")
 
-# --- MÓDULO 2: POSICIÓN Y LIQUIDEZ (CON SEGURIDAD) ---
+# --- MÓDULO 2: POSICIÓN Y LIQUIDEZ (ESTRATEGIA DE BOLSILLOS) ---
 st.header("2. Marco de Posición y Liquidez")
-st.info("🔒 Subí tu archivo Excel. Los datos se procesan en la memoria temporal y se destruyen al cerrar la pestaña.")
+st.info("🔒 Subí tu Excel. Los datos se agruparán por 'Cartera (Objetivo)' de forma automática.")
 
-# Botón mágico para subir el Excel
-archivo_subido = st.file_uploader("Cargar Plantilla de Inversiones (.xlsx)", type=["xlsx"])
+archivo_subido = st.file_uploader("Cargar Plantilla (.xlsx)", type=["xlsx"])
 
 if archivo_subido is not None:
-    # Si el usuario subió el Excel, lo leemos
     df_cartera = pd.read_excel(archivo_subido)
     st.success("¡Datos cargados de forma segura!")
-    
-    # Mostramos la tabla en pantalla
-    st.subheader("Tu Táctica Activa Actual")
     st.dataframe(df_cartera, use_container_width=True)
-st.dataframe(df_cartera, use_container_width=True)
 
     # --- MOTOR DE CÁLCULOS (PORTFOLIO ANALYTICS) ---
     st.markdown("### 📊 Auditoría de Rendimiento")
@@ -167,5 +161,7 @@ st.dataframe(df_cartera, use_container_width=True)
     st.markdown("### 🎯 Desglose por Objetivos (Mental Accounting)")
     resumen_bolsillos = df_cartera.groupby("Cartera (Objetivo)")["Capital Invertido"].sum().reset_index()
     
+    # Gráfico de barras simple en Streamlit
+    st.bar_chart(resumen_bolsillos.set_index("Cartera (Objetivo)"))
     # Gráfico de barras simple en Streamlit
     st.bar_chart(resumen_bolsillos.set_index("Cartera (Objetivo)"))
