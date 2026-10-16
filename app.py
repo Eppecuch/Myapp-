@@ -138,5 +138,34 @@ if archivo_subido is not None:
     # Mostramos la tabla en pantalla
     st.subheader("Tu Táctica Activa Actual")
     st.dataframe(df_cartera, use_container_width=True)
-else:
-    st.warning("Esperando que cargues tu archivo Excel para auditar la rentabilidad...")
+st.dataframe(df_cartera, use_container_width=True)
+
+    # --- MOTOR DE CÁLCULOS (PORTFOLIO ANALYTICS) ---
+    st.markdown("### 📊 Auditoría de Rendimiento")
+    
+    # 1. Patrimonio Total
+    patrimonio_total = df_cartera["Capital Invertido"].sum()
+    st.metric("Patrimonio Total Administrado", f"$ {patrimonio_total:,.2f}".replace(",", "."))
+    
+    # 2. Tasa Promedio Ponderada
+    df_cartera["Peso"] = df_cartera["Capital Invertido"] / patrimonio_total
+    df_cartera["Aporte_Tasa"] = df_cartera["TNA Referencia"] * df_cartera["Peso"]
+    tna_ponderada_cartera = df_cartera["Aporte_Tasa"].sum()
+    
+    # Cruce Micro vs Macro (Tu Cartera vs Inflación)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("TNA Promedio de tu Cartera", f"{tna_ponderada_cartera:.1f}%")
+    with col2:
+        spread_real = tna_ponderada_cartera - rem_actual
+        if spread_real > 0:
+            st.success(f"📈 Rendimiento Real Positivo: Le ganás a la inflación por {spread_real:.1f}% anual.")
+        else:
+            st.warning(f"📉 Rendimiento Real Negativo: Estás perdiendo contra la inflación por {abs(spread_real):.1f}% anual.")
+
+    # 3. Gráfico de Bolsillos (Bucket Strategy)
+    st.markdown("### 🎯 Desglose por Objetivos (Mental Accounting)")
+    resumen_bolsillos = df_cartera.groupby("Cartera (Objetivo)")["Capital Invertido"].sum().reset_index()
+    
+    # Gráfico de barras simple en Streamlit
+    st.bar_chart(resumen_bolsillos.set_index("Cartera (Objetivo)"))
